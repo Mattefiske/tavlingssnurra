@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tävlingssnurran</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0}
+/* Layout: centered column; the wheel sits on a dark navy "stage" panel, results below as a ranked draw list */
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --fg:#101a2e; --muted:#5d6880; --line:#dde2ec;
+  --stage:#0c1a36; --stage-2:#13274f; --navy-a:#183262; --navy-b:#1f4080; --navy-c:#2b55a6;
+  --gold:#d9a521; --gold-hi:#f3cf63; --on-stage:#f5f7fb; --accent:#1f4080;
+  --display:Archivo,"Helvetica Neue",Arial,sans-serif;
+  --body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#070d1b;--surface:#0e1830;--fg:#e9eef8;--muted:#95a2bd;--line:#1e2c4c;--stage:#0a1530;--stage-2:#112349;--accent:#7fa3ea;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#070d1b;--surface:#0e1830;--fg:#e9eef8;--muted:#95a2bd;--line:#1e2c4c;--stage:#0a1530;--stage-2:#112349;--accent:#7fa3ea;color-scheme:dark}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+.wrap{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+header{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,7vw,44px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.rule{width:48px;height:3px;background:var(--gold);border-radius:2px}
+.stagepanel{background:radial-gradient(120% 90% at 50% 20%,var(--stage-2),var(--stage));border-radius:20px;padding:clamp(18px,5vw,36px);display:flex;flex-direction:column;align-items:center;gap:clamp(18px,4vw,28px);box-shadow:0 20px 50px -24px rgba(8,18,40,.6)}
+.stage{position:relative;width:100%;max-width:460px;aspect-ratio:1}
+canvas{width:100%;height:100%;display:block}
+.pointer{position:absolute;left:50%;top:-4%;transform:translateX(-50%);width:9%;max-width:42px;z-index:3;filter:drop-shadow(0 4px 4px rgba(0,0,0,.45))}
+.hub{position:absolute;inset:0;margin:auto;width:36%;height:36%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffffff,#e6ebf4 70%);box-shadow:0 0 0 5px var(--gold),0 0 0 7px rgba(0,0,0,.25),0 10px 24px rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;box-sizing:border-box;gap:2px}
+.hub small{font-size:clamp(9px,2.2vw,11px);letter-spacing:.14em;text-transform:uppercase;color:#6a7590;font-weight:600}
+.ticker{font-family:var(--display);font-weight:700;font-size:clamp(12px,3.2vw,17px);word-break:break-all;line-height:1.15;color:#101a2e}
+button.spin{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#1a1405;border:0;border-radius:999px;padding:16px 48px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(217,165,33,.7);transition:transform .15s ease,box-shadow .15s ease}
+button.spin:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 12px 26px -8px rgba(217,165,33,.85)}
+button.spin:disabled{opacity:.5;cursor:default}
+button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:3px}
+.results{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.results h2{margin:0;font-family:var(--display);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.results ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.results li{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);min-width:0}
+.results li:first-child{border-top:0}
+.tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.results li.first .tag{color:var(--gold)}
+.uname{font-family:var(--display);font-weight:700;font-size:18px;word-break:break-all;min-width:0}
+.results li.first .uname{font-size:22px}
+.results a{color:var(--accent);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.results a:hover{text-decoration:underline}
+.empty{color:var(--muted);font-size:14px;margin:0}
+/* winner overlay */
+.reveal{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(5,10,25,.72);padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.card{background:var(--surface);color:var(--fg);border-radius:20px;padding:32px 28px;max-width:420px;width:100%;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;box-shadow:0 30px 60px -20px rgba(0,0,0,.6);border-top:4px solid var(--gold);animation:pop .45s cubic-bezier(.2,1.3,.4,1)}
+.card .tag{color:var(--gold)}
+.card .big{font-family:var(--display);font-weight:800;font-size:clamp(28px,8vw,40px);line-height:1.05;word-break:break-all}
+.card .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.ghost{font-family:var(--body);font-weight:600;font-size:14px;background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:10px 18px;cursor:pointer;text-decoration:none}
+.ghost.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:21;width:100%;height:100%}
+@media (prefers-reduced-motion:reduce){.card{animation:none}}
+@media (max-width:420px){.results li{grid-template-columns:1fr auto}.results li .tag{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Tävlingssnurran</h1>
+    <div class="rule"></div>
+  </header>
+  <section class="stagepanel">
+    <div class="stage">
+      <svg class="pointer" viewBox="0 0 40 56" aria-hidden="true"><path d="M20 56 L4 18 A17 17 0 1 1 36 18 Z" fill="#f3cf63" stroke="#a87c10" stroke-width="2"/><circle cx="20" cy="17" r="6" fill="#0c1a36"/></svg>
+      <canvas id="wheel" width="1000" height="1000" aria-label="Lyckohjul med alla deltagare"></canvas>
+      <div class="hub"><small id="hublbl">Redo</small><span class="ticker" id="ticker">Tryck på Snurra</span></div>
+    </div>
+    <button class="spin" id="spin">Snurra</button>
+  </section>
+</div>
+<div class="reveal" id="reveal" hidden>
+  <div class="card" role="dialog" aria-labelledby="rbig">
+    <span class="tag" id="rtag">Vinnare</span>
+    <span class="big" id="rbig"></span>
+    <div class="actions">
+      <a class="ghost primary" id="rlink" target="_blank" rel="noopener">Öppna profilen</a>
+      <button class="ghost" id="rclose">Stäng</button>
+    </div>
+  </div>
+</div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<script>
+const DATA=[["_busan_",1],["_hugojohansson",1],["_sjoooberg_",1],["4556liam",3],["75pillan75",1],["8barns.farsan",1],["99elisabeth",1],["adameskilsson",1],["ajaflood",1],["ajornefeldt",1],["alfred.sarelid",1],["algeskarjosefine",1],["alva.edh",1],["alva49261",1],["amaandaandersen",1],["amandadellien",1],["ameliahultman",1],["an_vickan",1],["anderssoneva63",1],["andreahobenreich",1],["angelica_ia",1],["angelicajkpg",1],["anikar49",1],["anna___81",1],["anna.ahlqvist",4],["anna.sjoberg.568",1],["annacryden",1],["annagardstam",1],["annagrcz",1],["annah_holmberg",1],["annamlundberg",1],["annanorberg86",1],["annanpannan89",1],["annasofia72",1],["annasotis",1],["anneliiee",1],["annelijkpg",1],["annemakela",1],["annicadagu",1],["annicaljungdahl",1],["annikaspelargonier",1],["annis_912",1],["annlouiseklint68_",1],["annolofsson76",1],["annsan_73",1],["annsofienojd",2],["anorcah",1],["antooonjakobsson",1],["asa_olofsson_",1],["asaholst73",1],["aslundemelie",1],["aussiekullens",1],["axelhansson9",1],["axelhenrikssson",1],["axelkemi",1],["axelsson_niklas",1],["bastian_karlsson",1],["beckasme",1],["bellaengsttrom",1],["berg.lotta",2],["bhe.group",1],["black23_flower",1],["boochizmaximus",1],["brolles",1],["bubba_lindqvist",1],["c.ahlstedt",1],["cajliden",1],["camilla_.yan",1],["camillaskoglar",1],["camillaspysselrum",1],["carinaboij",1],["carlsson_linn",1],["carlsson.heimstaden",1],["carlssonemma88",2],["carolinacecilialind",1],["carolineforsberg83",2],["carolinehansen26",1],["carolinetsson",1],["carroenell",1],["carrotedefalt",1],["charliiies",1],["cicciandherboys",2],["cindyedfeldt",1],["clarabarback",1],["cnoojd",7],["coach__creative",1],["connypojk",1],["daggochlinda",1],["danielforssell",1],["daniellafroding",1],["davidssonamanda",1],["denise_ydrestrand",1],["denkreativafamiljen",1],["diddidianadiddi",1],["disa.ns",5],["dolckan",3],["dunilla_persson",1],["ebba20575",1],["ebbadareus",2],["eemiiiliiiaaa",1],["eija.greus",1],["einyvonne",1],["el_in8270",1],["eleftheria80",5],["elidafollin",1],["elin_hjalmarsson",1],["elinamarialindelof",1],["elinapantzar",1],["elinbjarkstam",1],["ella.k06_",1],["ellensandaahl",1],["ellinorsteen",1],["elsie.122021",1],["eluw",1],["elvira._.sannegard",1],["elvirastrale",1],["emelieaxell",1],["emilfroding",1],["emla83",1],["emmaapeterson",1],["emmajaris",1],["emmcarlsson",1],["emmer147",1],["enya.jag",1],["ericandersson89",1],["erikjohansson1984",1],["esping_elliot",1],["eva.romhagen",1],["evalotteluck",1],["ewaa_ax",1],["ewertlindqvist",1],["fasterfia",1],["feliciaaa_07_",1],["fibbanhuber",1],["filippatedenljung",3],["filipsjoholm",1],["frallan.fan2.0",1],["freakyfredde",1],["fredricfendrich5",1],["frida_lundahl",1],["fridasparr",1],["fridatrajkov",2],["frolunda_jarl",4],["frunilhammer",2],["frunormelli",1],["frustorm",3],["g.eberhardzon",1],["gabrieldegirmenci",1],["gabriellagermundsson",1],["greta1965",4],["gulansulan",2],["gunillabergdalen",3],["gurrag76",1],["haarden88",1],["habobettan",1],["hageltorn",1],["hakaneliasnorberg",1],["hakansson.carolina",1],["hannanooni",5],["hannatornlind",1],["hanneskrantz",1],["hansen__lisa",1],["hassefrisor",1],["hatalasofie",1],["helenahedin",1],["hellmansson1",1],["hjelmen88",14],["hkingsepp87",1],["hmgwiberg",1],["hoppharen",1],["hsarenborg",1],["hub_bub",2],["hugge753",1],["hugo_iffe",1],["hv71tjej_",1],["idakarlsson._",1],["idarendahl",1],["idfredrik",1],["idussen89",1],["iidaeklund",1],["ilovecolorskarinlitsen",1],["imintradgardnu",1],["ingelalarsson1",4],["ingridlarsson52",1],["inteutanmening",1],["iracz89",1],["isakklinkhamer",1],["jackkberg",1],["janrolandgsson",1],["janssonwilmaa",1],["janzon92",1],["jendan76",1],["jenniifermikkila",1],["jenny.lindqvist85",1],["jennymalm_74",1],["jensapinnen",1],["jesperdavidsson",1],["jessica.carlsson1972",2],["jessicaodeen",1],["jessiepinklady",1],["jjuliahagg",1],["johan_irma23",2],["johan.nordling",1],["johanguldbrand",1],["johansson462",1],["jola.kulig",1],["jonas.9764",1],["jonnaberg20",3],["jonnnala",1],["jonsson1977",1],["jossanjormvik",1],["juliasvensson_04",1],["juliasvenssoonn",1],["kajsa72",1],["kalinkacarro",1],["karin.johansson73",3],["karinjohansson5",2],["karinljunggren",1],["karinromhagen",1],["karldahlstroom",1],["kattis_zera",1],["kenthenriksson77",1],["kerstin.peterson",1],["kickafagrell",1],["kimmehedaffe",1],["kingen84",1],["kitagerklint",1],["klascarlborg",1],["koccoz",1],["kristin.sarelid",1],["lady6645",1],["landinmalin",1],["lappzki",1],["larsson1911",1],["leijnaaa",3],["lena.akersten",1],["lenabehrenfors",1],["lenarydell",3],["leonsterner",1],["liamahstrom",1],["lillamy24",1],["lillbjork",1],["linda.dahlstrom1984",2],["lindabarklid",1],["lindaedlund83",1],["lindulf",1],["linneawerneskog",1],["linneeaaodeen",1],["linnmariaeklundd",1],["linnsjolin",1],["lisakarlhager",1],["liselottetottan",1],["llisadahl",1],["lotta_heller",1],["louiisejenssen",5],["louiseevenholm",1],["lovisastalhandskee",1],["lovisatedenljung",1],["lucaslagerbergfanpage8",1],["ludeviksbecka",2],["lukasax13",1],["lundberg2201",1],["lundhmaria",7],["lusthmona",1],["m.stromblad09",1],["m92ie95",1],["maadelenejansson",1],["maddis1",1],["magdahagg",1],["magdalena_gustavsson",1],["mahlinmahlin",1],["majajonsson2013",1],["majamomciloviic",1],["majapreducic",1],["majoren2k4",1],["malin_asking",1],["malin.eriksson86",5],["malinostlunds",1],["mamma.matilda",1],["mamma.sussie",4],["mariapaulsson1",1],["marielouiseclaesson",1],["mariestaafengstrom",3],["marinaahstrom",1],["martabackeus123",1],["martinaj76",1],["martinlafleurahlqvist",1],["mathildavestin",6],["matiildaae",1],["matttiasofficial",1],["maununenaaron",1],["maxwell13500",1],["mea_johansson",1],["melindakaremalm",2],["melvin.schenell",1],["mgfishing",1],["mia.ahlfeldt",1],["miase72",1],["micklamor",1],["miiialeander",1],["mikaelagabro",4],["mikaelfebell",1],["mike58johansson",1],["millan1985",1],["millieandmelli",1],["milohv12",1],["mimmiberndtsson",2],["minna.virkkunen",1],["mittlindasjolin",1],["mizaja",1],["moelimoa",1],["monica_evaldsson",1],["monicaericsson",1],["morriso87",1],["mrsjennymurray",1],["mrspernillasvensson",1],["myranmira",1],["mysigatjejen81",1],["nataashamiichelle",1],["niklas_fransson",1],["niklasc",1],["ninafransson75",1],["nnyberg13",1],["noah.gardstam",1],["norfagerkvist",1],["nuffran",1],["oliwer_18",1],["oliwerlindbom",1],["olmeborn",1],["oskarlofkvist",1],["parnilsen",1],["paulinakristinaandersson",1],["paulinawibeck",1],["peaasp",1],["peewe76",1],["pellekula",1],["pernilla.arbfors",1],["polen1987",1],["primeme2.0",1],["rahmjohanna",1],["rapunselb",1],["rasmusstegemyr",1],["rebecca_niemela",1],["rebecca.tapper",1],["rebeckaulman",1],["rolandfogh",1],["ryepierre",1],["sandgreneric",1],["sandraasserstam",1],["sannaaevelina",1],["sara_rogersdotter99",1],["sara.chamai",1],["sarajkpg",1],["sarasj77",2],["sirsjofabian",1],["sjogrenagnes",1],["smajl79",1],["smedbergsfru",1],["sofiabackeus82",1],["sofianygardh",1],["sofiawpetersson",1],["sofiianilsson",1],["somedays.ill.be",1],["stefanhkan",1],["stefanstenhager",1],["stinawingmark",1],["stromtina",1],["sund_no1",1],["susannenersater",12],["susse1976",1],["sussijison",1],["tanjabundalo",1],["tessanw85",1],["thehappylessproject",1],["therese.sirsjozaxin",1],["thomas_neid",1],["thomas_svensson1973",1],["thomasfast76",1],["tibbetina",1],["tiffani.pabst",1],["tilda.stromblad",1],["tobyallthin",1],["tomasosth",4],["tomir1962",1],["tommyroosbengtsson",1],["tony7012livese",1],["tooweandersson",1],["toveclaar",1],["tulu0005",1],["tuvajohansson100",1],["ulf.dan",1],["ulrika.blomberg",1],["ulrikaigislaved",1],["vantourer540go",1],["veronika.peterson.hastmassor",1],["vickang86",1],["victorvacht",1],["viggens_kanelbullen000",1],["viktor_h88",1],["virkkunen79",1],["vivelafrance62",1],["vwib96",1],["wallenbergcecilia",2],["wallinderrasmus",1],["wicke_84",1],["wiljabjorhed",1],["will_tina",1],["willejl02",1],["william.hv71",1],["williamskold245",1],["wilma.a.a.a",1],["yttergarden112",1],["zagaoijennus",25],["zammol",1],["zandrawolf",1],["zophiaw",1]];
+const cv=document.getElementById('wheel'),ctx=cv.getContext('2d');
+const tick=document.getElementById('ticker'),hublbl=document.getElementById('hublbl'),btn=document.getElementById('spin');
+let removed=new Set(),angle=0,spinning=false,entries=[],drawn=0;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function build(){entries=DATA.map(d=>d[0]).filter(u=>!removed.has(u));draw();}
+function draw(){
+  const W=cv.width,c=W/2,Rr=W/2-6,R=Rr-34,n=entries.length;ctx.clearRect(0,0,W,W);
+  // gold rim
+  const g=ctx.createLinearGradient(0,0,W,W);g.addColorStop(0,'#f3cf63');g.addColorStop(.5,'#c8921a');g.addColorStop(1,'#f0c650');
+  ctx.beginPath();ctx.arc(c,c,Rr,0,2*Math.PI);ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.arc(c,c,R+8,0,2*Math.PI);ctx.fillStyle='#0a1530';ctx.fill();
+  // rim ticks (rotate with wheel)
+  ctx.save();ctx.translate(c,c);ctx.rotate(angle);
+  for(let i=0;i<48;i++){ctx.rotate(2*Math.PI/48);ctx.beginPath();ctx.arc(0,-(Rr+R+8)/2,i%4===0?7:4,0,2*Math.PI);ctx.fillStyle=i%4===0?'#fff8e0':'rgba(255,248,224,.55)';ctx.fill();}
+  ctx.restore();
+  if(!n)return;
+  const cols=['#183262','#1f4080','#2b55a6','#e9eef8'];
+  const a=2*Math.PI/n;
+  for(let i=0;i<n;i++){ctx.beginPath();ctx.moveTo(c,c);ctx.arc(c,c,R,angle+i*a-Math.PI/2,angle+(i+1)*a-Math.PI/2);ctx.closePath();ctx.fillStyle=cols[i%4];ctx.fill();}
+  // inner shading
+  const sh=ctx.createRadialGradient(c,c,R*.3,c,c,R);sh.addColorStop(0,'rgba(255,255,255,.10)');sh.addColorStop(.85,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.35)');
+  ctx.beginPath();ctx.arc(c,c,R,0,2*Math.PI);ctx.fillStyle=sh;ctx.fill();
+}
+function underPointer(){const n=entries.length,a=2*Math.PI/n;let t=((-angle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);return entries[Math.floor(t/a)%n];}
+function rnd(max){const b=new Uint32Array(1),lim=Math.floor(4294967296/max)*max;let x;do{crypto.getRandomValues(b);x=b[0]}while(x>=lim);return x%max;}
+btn.onclick=()=>{
+  if(spinning||!entries.length)return;spinning=true;btn.disabled=true;hublbl.textContent='Snurrar';
+  const n=entries.length,a=2*Math.PI/n,idx=rnd(n),winner=entries[idx];
+  const frac=.2+Math.random()*.6;
+  const targetMod=(2*Math.PI-(idx+frac)*a)%(2*Math.PI);
+  const cur=((angle%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  let delta=(targetMod-cur+2*Math.PI)%(2*Math.PI)+2*Math.PI*(reduce?0:8);
+  const start=angle,dur=reduce?300:8000,t0=performance.now();
+  (function f(now){const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,4);angle=start+delta*e;draw();tick.textContent=underPointer();
+    if(p<1)requestAnimationFrame(f);else finish(winner);})(t0);
+};
+function label(k){return k===0?'Vinnare':'Reserv '+k;}
+function finish(u){
+  spinning=false;tick.textContent=u;hublbl.textContent=label(drawn);
+  document.getElementById('rtag').textContent=label(drawn);document.getElementById('rbig').textContent='@'+u;
+  document.getElementById('rlink').href='https://www.instagram.com/'+encodeURIComponent(u)+'/';
+  document.getElementById('reveal').hidden=false;if(!reduce)confetti();
+  drawn++;removed.add(u);
+  btn.textContent='Dra reserv';
+}
+document.getElementById('rclose').onclick=()=>{document.getElementById('reveal').hidden=true;build();btn.disabled=false;hublbl.textContent='Redo';tick.textContent='Tryck på Snurra';};
+document.getElementById('reveal').addEventListener('click',e=>{if(e.target.id==='reveal')document.getElementById('rclose').click();});
+function confetti(){
+  const c=document.getElementById('confetti'),x=c.getContext('2d');const W=c.width=innerWidth,H=c.height=innerHeight;
+  const cols=['#f3cf63','#d9a521','#ffffff','#2b55a6','#7fa3ea'];
+  const ps=Array.from({length:140},()=>({x:W/2,y:H*.45,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,r:Math.random()*Math.PI,vr:(Math.random()-.5)*.3,s:6+Math.random()*6,c:cols[Math.floor(Math.random()*cols.length)]}));
+  const t0=performance.now();
+  (function f(now){x.clearRect(0,0,W,H);for(const p of ps){p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);x.restore();}
+    if(now-t0<3500)requestAnimationFrame(f);else x.clearRect(0,0,W,H);})(t0);
+}
+build();
+</script>
+
+</body>
+</html>
